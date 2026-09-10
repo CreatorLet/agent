@@ -37,7 +37,7 @@ async function readPackage() {
 }
 async function stopPreview() {
   if (!previewProcess) return;
-  try { previewProcess.kill("SIGTERM"); } catch { /* already stopped */ }
+  try { previewProcess.kill("SIGTERM"); } catch {}
   previewProcess = null;
 }
 async function startPreview() {
@@ -53,11 +53,7 @@ async function startPreview() {
   const pkg = await readPackage();
   if (!pkg?.scripts?.start) throw new Error("The agent finished, but no previewable index.html/dist/build or npm start script was found.");
   previewKind = "node";
-  previewProcess = spawn("npm", ["run", "start"], {
-    cwd: ROOT,
-    env: { ...process.env, PORT: String(PREVIEW_PORT), HOST: "0.0.0.0" },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  previewProcess = spawn("npm", ["run", "start"], { cwd: ROOT, env: { ...process.env, PORT: String(PREVIEW_PORT), HOST: "0.0.0.0" }, stdio: ["ignore", "pipe", "pipe"] });
   previewProcess.stdout?.on("data", chunk => push({ type: "tool", message: `preview: ${String(chunk).trim().slice(0, 1000)}` }));
   previewProcess.stderr?.on("data", chunk => push({ type: "tool", message: `preview: ${String(chunk).trim().slice(0, 1000)}` }));
   previewProcess.on("exit", code => { if (code && status === "ready") push({ type: "error", message: `Preview process exited with code ${code}.` }); previewProcess = null; });
@@ -68,7 +64,7 @@ async function proxyPreview(req: express.Request, res: express.Response) {
   if (previewKind === "static") {
     const safe = path.resolve(previewRoot, "." + targetPath);
     if (safe !== previewRoot && !safe.startsWith(previewRoot + path.sep)) return res.status(400).send("Invalid preview path");
-    try { const stat = await fs.stat(safe); if (stat.isFile()) return res.sendFile(safe); } catch { /* fall through */ }
+    try { const stat = await fs.stat(safe); if (stat.isFile()) return res.sendFile(safe); } catch {}
     const spaIndex = path.join(previewRoot, "index.html");
     if (await exists(spaIndex)) return res.sendFile(spaIndex);
     return res.status(404).send("Preview file not found");
@@ -119,13 +115,14 @@ app.get("/api/files", async (req, res) => {
   if (!authorized(req)) return res.status(401).json({ error: "Invalid prototype key." });
   async function walk(dir: string): Promise<string[]> {
     const out: string[] = [];
-    let entries = [] as Awaited<ReturnType<typeof fs.readdir>>;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return out; }
-    for (const e of entries) {
-      if (["node_modules", ".git"].includes(e.name)) continue;
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) out.push(...await walk(full)); else out.push(path.relative(ROOT, full));
-    }
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const e of entries) {
+        if (["node_modules", ".git"].includes(e.name)) continue;
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) out.push(...await walk(full)); else out.push(path.relative(ROOT, full));
+      }
+    } catch {}
     return out;
   }
   res.json({ files: await walk(ROOT) });
