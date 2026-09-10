@@ -1,4 +1,5 @@
 const prompt = document.getElementById("prompt");
+const key = document.getElementById("key");
 const provider = document.getElementById("provider");
 const build = document.getElementById("build");
 const statusEl = document.getElementById("status");
@@ -9,6 +10,8 @@ const open = document.getElementById("open");
 let timer;
 let lastCount = 0;
 
+key.value = sessionStorage.getItem("prototypeKey") || "";
+function headers() { return { "Content-Type": "application/json", "x-prototype-key": key.value.trim() }; }
 function addLog(event) {
   if (logs.querySelector(".muted")) logs.innerHTML = "";
   const row = document.createElement("div");
@@ -17,7 +20,6 @@ function addLog(event) {
   logs.appendChild(row);
   logs.scrollTop = logs.scrollHeight;
 }
-
 async function poll() {
   const r = await fetch("/api/status");
   const data = await r.json();
@@ -38,10 +40,10 @@ async function poll() {
     build.disabled = false;
   }
 }
-
 build.addEventListener("click", async () => {
   const value = prompt.value.trim();
   if (!value) return alert("Describe what you want to build first.");
+  sessionStorage.setItem("prototypeKey", key.value.trim());
   build.disabled = true;
   statusEl.textContent = "starting";
   logs.innerHTML = "";
@@ -49,11 +51,14 @@ build.addEventListener("click", async () => {
   frame.src = "about:blank";
   empty.style.display = "grid";
   open.classList.add("disabled");
-  const r = await fetch("/api/build", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: value, provider: provider.value })
-  });
+  let r;
+  try {
+    r = await fetch("/api/build", { method: "POST", headers: headers(), body: JSON.stringify({ prompt: value, provider: provider.value }) });
+  } catch (error) {
+    build.disabled = false;
+    addLog({ type: "error", message: String(error) });
+    return;
+  }
   const data = await r.json();
   if (!r.ok) {
     build.disabled = false;
