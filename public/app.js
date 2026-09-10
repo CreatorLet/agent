@@ -42,8 +42,10 @@ async function poll() {
 }
 build.addEventListener("click", async () => {
   const value = prompt.value.trim();
+  const prototypeKey = key.value.trim();
+  if (!prototypeKey) return alert("Enter the prototype key first.");
   if (!value) return alert("Describe what you want to build first.");
-  sessionStorage.setItem("prototypeKey", key.value.trim());
+  sessionStorage.setItem("prototypeKey", prototypeKey);
   build.disabled = true;
   statusEl.textContent = "starting";
   logs.innerHTML = "";
