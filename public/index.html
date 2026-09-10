@@ -11,6 +11,7 @@
   <main class="layout">
     <section class="builder panel">
       <div class="panel-head"><h2>Build</h2><span id="status">Idle</span></div>
+      <input id="key" type="password" autocomplete="off" placeholder="Prototype key" />
       <textarea id="prompt" placeholder="Describe what you want to build...\n\nExample: Build a modern Q&A website using Node.js and Express. It should have a search box, question list, answer form, responsive styling, and be fully runnable."></textarea>
       <div class="controls"><select id="provider"><option value="groq">Groq</option><option value="anthropic">Anthropic</option></select><button id="build">Build project</button></div>
       <div class="logs" id="logs"><div class="muted">Agent activity will appear here.</div></div>
